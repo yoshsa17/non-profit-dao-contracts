@@ -25,6 +25,13 @@ contract("NLock", async (accounts) => {
     });
   })
 
+  describe("balanceOf", () => {
+    it("should return 0 NLock",  async () => {
+      const balance = await nLock.balanceOf(accounts[0]);
+      assert.equal(balance, 0);
+    })
+  })
+
   describe("createLock", () => {
     const unlockTime =  now+SIX_MONTH;
 

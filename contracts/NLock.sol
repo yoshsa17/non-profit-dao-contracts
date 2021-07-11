@@ -124,6 +124,9 @@ contract NLock{
         view
         returns(uint)
     {
+        if(_lockedBalances[addr_].amount == 0){
+            return 0;
+        }
         uint time = _lockedBalances[addr_].unlockTime - _lockedBalances[addr_].lockTime;
         uint percentage = time*100/ MAX_LOCKTIME ;
         uint votingPower = _lockedBalances[addr_].amount / (100/percentage);
