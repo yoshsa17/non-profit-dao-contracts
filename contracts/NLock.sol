@@ -1,35 +1,52 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./libraries/NSafeMath.sol";
+import "./lib/SafeMath.sol";
 
-contract NLock{
-    using NSafeMath for uint;
+contract NLock {
+    using SafeMath for uint256;
 
-    // 365 days == 365*24*60*60(epoch time)
-    uint private constant MAX_LOCKTIME = 365 days;
+    uint256 private constant DAY = 60 * 60 * 24;
 
-    uint private constant MINI_LOCKTIME = 0;
-    uint private constant DAY = 60*60*24;
+    uint256 private _maxLocktime = 0;
+    uint256 private _minLocktime = 0;
 
     string private _name = "locked Non-profit DAO Token";
     string private _symbol = "loNPO";
-    uint8  private _decimal = 18;
-    uint   private _totalSupply = 0;
+    // 1 loNPO == 1 * 10 ** 18
+    uint8 private _decimal = 18;
+    uint256 private _totalSupply = 0;
     NTokenInterface private _nToken;
 
-    struct LockedBlance{
-        uint amount;
-        uint unlockTime;
-        uint lockTime;
+    struct LockedBlance {
+        uint256 amount;
+        uint256 unlockTime;
+        uint256 lockTime;
     }
     mapping(address => LockedBlance) internal _lockedBalances;
 
-    event Withdraw(address dst_, uint amt_);
-    event CreateLock(address addr_, uint amt_, uint unlockTime_, uint lockTime);
+    /// @notice An event emitted when a user withdraws Ntoken after its locktime has passed
+    event Withdraw(address dst_, uint256 amt_);
 
-    constructor(address nToken_){
+    /// @notice An event emitted when a user locks their NToken
+    event CreateLock(
+        address addr_,
+        uint256 amt_,
+        uint256 unlockTime_,
+        uint256 lockTime
+    );
+
+    /// @notice An event emitted when a user locks additional NToken
+    event IncreaseLock(address addr_, uint256 newAmount_);
+
+    constructor(
+        address nToken_,
+        uint256 maxLockTime_,
+        uint256 minLockTime_
+    ) {
         _nToken = NTokenInterface(nToken_);
+        _maxLocktime = maxLockTime_;
+        _minLocktime = minLockTime_;
     }
 
     function name() public view returns (string memory) {
@@ -44,46 +61,58 @@ contract NLock{
         return _decimal;
     }
 
-    function totalSupply() public view returns (uint) {
+    function totalSupply() public view returns (uint256) {
         return _totalSupply;
     }
 
+    /**
+     * @notice Get the current voting power for "msg.sender"
+     * @param addr_ user EOA address
+     * @return votingPower = Amount * lockTime / MAXTIME
+     *   ex) 10 NPO * 6 month / 365 days = 5 loNPO
+     *       5 NPO * 12 month / 365 days = 5 loNPO
+     */
+    function balanceOf(address addr_) external view returns (uint256) {
+        if (_lockedBalances[addr_].amount == 0) {
+            return 0;
+        }
+        uint256 time = _lockedBalances[addr_].unlockTime -
+            _lockedBalances[addr_].lockTime;
+        uint256 percentage = (time * 100) / _maxLocktime;
+        uint256 votingPower = _lockedBalances[addr_].amount /
+            (100 / percentage);
+        return votingPower;
+    }
 
     /**
-     * @notice Deposit 'amt_' tokens until 'unlockedTime_'
-     * @dev This function excuted after msg.sender approves transfering nToken
-     * @param amt_ amount locked in this Nlock contract
-     * @param unlockTime_ Epoch time when lockedNTokens are released, rounded off to whole day
+     * @notice Lock 'amt_' tokens until 'unlockedTime_'.
+     * @dev This function excutable only after msg.sender approves transfering nToken.
+     * @param amt_ Amount locked in this contract.
+     * @param unlockTime_ Epoch time when loNPO are released, rounded down to whole day.
      */
-    function createLock(
-        uint amt_,
-        uint unlockTime_
-    )
+    function createLock(uint256 amt_, uint256 unlockTime_)
         external
+        hasNotLockedNToken(msg.sender)
         returns (bool)
     {
-        uint tmp1 = unlockTime_.div(DAY);
-        uint unlockTime = tmp1.mul(DAY);
-        uint timeStamp = block.timestamp;
-        uint tmp2 =  timeStamp.div(DAY);
-        uint lockTime = tmp2.mul(DAY);
-        require(amt_ > 0,"NLock::invalid amount");
+        // Round down unlocktime & locktime to a whole day.
+        uint256 unlockTime = (unlockTime_.div(DAY)).mul(DAY);
+        uint256 tmp = (block.timestamp).div(DAY);
+        uint256 lockTime = tmp.mul(DAY);
+
+        require(amt_ > 0, "NLock::invalid amount");
         require(
-            unlockTime > (lockTime+MINI_LOCKTIME),
+            unlockTime > (lockTime + _minLocktime),
             "NLock::invalid unlockTime"
         );
-        require(
-            _lockedBalances[msg.sender].amount == 0,
-            "NLock::You have already locked NToken"
-        );
 
-        // This line should be excuted after msg.sender approves trasfering
-        _nToken.transferFrom(msg.sender, address(this) , amt_);
+        // This line should be excuted after msg.sender approves transferring
+        _nToken.transferFrom(msg.sender, address(this), amt_);
 
         LockedBlance memory newLockedBalance = LockedBlance({
             amount: amt_,
             unlockTime: unlockTime,
-            lockTime:lockTime
+            lockTime: lockTime
         });
         _lockedBalances[msg.sender] = newLockedBalance;
         _totalSupply = _totalSupply.add(amt_);
@@ -96,13 +125,10 @@ contract NLock{
      * @notice Withdraw all tokens for `msg.sender`
      * @dev Only possible if the lock has expired
      */
-    function withdraw() external hasLockedNToken(msg.sender) returns(bool){
+    function withdraw() external hasLockedNToken(msg.sender) returns (bool) {
         LockedBlance memory _lock = _lockedBalances[msg.sender];
-        uint _t = block.timestamp;
-        require(
-            _lock.unlockTime < _t,
-            "NLock::The lock time didn't expired"
-        );
+        uint256 _t = block.timestamp;
+        require(_lock.unlockTime < _t, "NLock::The lock time didn't expired");
         _lock.amount = 0;
         _lock.unlockTime = 0;
         _nToken.transfer(msg.sender, _lock.amount);
@@ -111,43 +137,42 @@ contract NLock{
         return true;
     }
 
-    /**
-     * @notice Get the current voting power for "msg.sender"
-     * @param addr_ user EOA address
-     * @return votingPower = amount * time/MAXTIME
-     *   ex) 10 NPD * 6 month / 12 month = 5 NPD * 12 month / 12 month = 5 loNPD
-     */
-    function balanceOf(
-        address addr_
-    )
-        external
-        view
-        returns(uint)
-    {
-        if(_lockedBalances[addr_].amount == 0){
-            return 0;
-        }
-        uint time = _lockedBalances[addr_].unlockTime - _lockedBalances[addr_].lockTime;
-        uint percentage = time*100/ MAX_LOCKTIME ;
-        uint votingPower = _lockedBalances[addr_].amount / (100/percentage);
-        return votingPower;
-    }
-
-    // function totalSupply()external {}
+    //@todo add increaseLock function
+    // /**
+    //  * @notice Increase locked Ntoken amount
+    //  * @param amt_ Amount of NPO to increase loNPO
+    //  */
+    // function increaseLock(uint256 amt_)
+    //     external
+    //     hasLockedNToken(msg.sender)
+    //     returns (bool)
+    // {
+    //     return true;
+    // }
 
     modifier hasLockedNToken(address addr_) {
         require(
             _lockedBalances[addr_].amount > 0,
-            "NLock:: User hasn't locked your nToken yet"
+            "NLock::This account has not locked NToken yet"
         );
         _;
     }
 
+    modifier hasNotLockedNToken(address addr_) {
+        require(
+            _lockedBalances[msg.sender].amount == 0,
+            "NLock::You have already locked NToken"
+        );
+        _;
+    }
 }
 
 interface NTokenInterface {
-    function transfer(address dst, uint amt) external returns (bool);
+    function transfer(address dst, uint256 amt) external returns (bool);
+
     function transferFrom(
-        address src, address dst, uint amt
+        address src,
+        address dst,
+        uint256 amt
     ) external returns (bool);
 }

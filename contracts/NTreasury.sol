@@ -1,39 +1,46 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./libraries/NSafeMath.sol";
+import "./lib/SafeMath.sol";
 
 contract NTreasury {
-    using NSafeMath for uint;
+    using SafeMath for uint256;
 
     /**
      * @notice src = address for a donor.
      * @notice dst = address for a person who acts following accepted proposal.
      * @notice info = human readable information for expenditure.
      */
-    struct TxRecord{
+    struct TxRecord {
         address src;
         address dst;
-        uint amt;
+        uint256 amt;
         string info;
     }
-    mapping(uint => TxRecord) internal _records;
+    mapping(uint256 => TxRecord) internal _records;
 
-    uint private _recordCnt;
-    uint private _totalFunds;
+    uint256 private _recordCnt;
+    uint256 private _totalFunds;
 
-    event AppendTx(uint recordId, address src, address dst, uint amt, string info);
-    event Send(address dst, uint amt);
+    event AppendTx(
+        uint256 recordId,
+        address src,
+        address dst,
+        uint256 amt,
+        string info
+    );
+    event Send(address dst, uint256 amt);
 
-    constructor(){
+    constructor() {
         _recordCnt = 0;
         _totalFunds = 0;
     }
 
-    function getTotalFunds() public view returns(uint){
+    function getTotalFunds() public view returns (uint256) {
         return _totalFunds;
     }
-    function getRecordCnt() public view returns(uint){
+
+    function getRecordCnt() public view returns (uint256) {
         return _recordCnt;
     }
 
@@ -57,16 +64,13 @@ contract NTreasury {
     function _append(
         address src_,
         address dst_,
-        uint amt_,
+        uint256 amt_,
         string memory info_
-    )
-        internal
-        returns(bool)
-    {
+    ) internal returns (bool) {
         require(amt_ > 0, "NTreasury::Invalid amount");
         require(bytes(info_).length <= 30, "NTreasury::Invalid information");
         _recordCnt++;
-        uint recordId = _recordCnt;
+        uint256 recordId = _recordCnt;
         TxRecord memory newTx = TxRecord({
             src: src_,
             dst: dst_,
@@ -85,13 +89,9 @@ contract NTreasury {
      */
     function send(
         address dst_,
-        uint amt_,
+        uint256 amt_,
         string memory info_
-        )
-        public
-        onlyApprovedProposer
-        returns(bool)
-    {
+    ) public onlyApprovedProposer returns (bool) {
         address _thisAddr = address(this);
         _append(_thisAddr, dst_, amt_, info_);
         _totalFunds = _totalFunds.sub(amt_);
@@ -103,30 +103,22 @@ contract NTreasury {
     /**
      * @notice Anyone can look up records by giving recordId
      */
-    function getTxRecord(
-        uint recordId_
-        )
+    function getTxRecord(uint256 recordId_)
         external
         view
-        returns(
+        returns (
             address src,
             address dst,
-            uint amt,
+            uint256 amt,
             string memory info
         )
     {
         TxRecord memory _txRecord = _records[recordId_];
-        require(_txRecord.amt > 0 ,"NTreasury::Invalid recordId");
-        return (
-            _txRecord.src,
-            _txRecord.dst,
-            _txRecord.amt,
-            _txRecord.info
-        );
+        require(_txRecord.amt > 0, "NTreasury::Invalid recordId");
+        return (_txRecord.src, _txRecord.dst, _txRecord.amt, _txRecord.info);
     }
 
-
-    modifier onlyApprovedProposer(){
+    modifier onlyApprovedProposer() {
         //Todo:: msg.sender == proposer of approved proposal.
         _;
     }

@@ -1,13 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./libraries/NSafeMath.sol";
+import "./lib/SafeMath.sol";
 
 contract NVoting {
-    using NSafeMath for uint;
+    using SafeMath for uint256;
 
     NLockInterface private _nLock;
-    string private  _name = "NVoting";
+    string private _name = "NVoting";
     uint256 private _proposalCount;
     // 40320 blocks = 60*60*24*7 (7days)  /  15 sec (assuming 15s blocks)
     uint32 private _minVotingPeriod = 0;
@@ -17,19 +17,19 @@ contract NVoting {
      * @dev votorsCount include how many votors paticipate this proposal.
      */
     struct Proposal {
-        uint id;
+        uint256 id;
         address proposer;
-        string    proposalUri;
-        uint8  votingOption;
-        uint32  startBlock;
-        uint32  endBlock;
-        uint    forAmount;
-        uint    againstAmount;
-        bool     canceled;
-        mapping(address => uint) forVoters;
-        mapping(address => uint) agaistVoters;
+        string proposalUri;
+        uint8 votingOption;
+        uint32 startBlock;
+        uint32 endBlock;
+        uint256 forAmount;
+        uint256 againstAmount;
+        bool canceled;
+        mapping(address => uint256) forVoters;
+        mapping(address => uint256) agaistVoters;
     }
-    mapping(uint => Proposal) private _proposalList;
+    mapping(uint256 => Proposal) private _proposalList;
 
     enum ProposalStatus {
         Pending,
@@ -40,28 +40,33 @@ contract NVoting {
     }
 
     /// @notice An event emitted when a new proposal is created
-    event CreateProposal(uint id, address proposer, uint32 startBlock, uint32 endBlock);
+    event CreateProposal(
+        uint256 id,
+        address proposer,
+        uint32 startBlock,
+        uint32 endBlock
+    );
 
     /// @notice An event emitted when a vote has been cast on a proposal
-    event CastVote(address voter, uint proposalId, bool vote, uint amt);
+    event CastVote(address voter, uint256 proposalId, bool vote, uint256 amt);
 
     /// @notice An event emitted when a proposal has been canceled
-    event CancelProposal(uint id);
+    event CancelProposal(uint256 id);
 
-
-
-    constructor(address nLock_){
+    constructor(address nLock_) {
         _nLock = NLockInterface(nLock_);
         _proposalCount = 0;
     }
 
-    function name() public view returns(string memory) {
+    function name() public view returns (string memory) {
         return _name;
     }
-    function proposalCount() public view returns(uint) {
+
+    function proposalCount() public view returns (uint256) {
         return _proposalCount;
     }
-    function minVotingPeriod() public view returns(uint) {
+
+    function minVotingPeriod() public view returns (uint256) {
         return _minVotingPeriod;
     }
 
@@ -75,19 +80,19 @@ contract NVoting {
     function createProposal(
         string memory proposalUri_,
         uint8 votingOption_,
-        uint startBlock_,
-        uint endBlock_
+        uint256 startBlock_,
+        uint256 endBlock_
     )
         external
         onlyMember(msg.sender)
         validBlock(startBlock_, endBlock_)
-        returns(uint)
+        returns (uint256)
     {
         // @Todo::add require()
         //require(threthhold);
         //require(if uri is correct);
         _proposalCount++;
-        uint proposalId = _proposalCount;
+        uint256 proposalId = _proposalCount;
 
         Proposal storage p = _proposalList[proposalId];
 
@@ -101,12 +106,7 @@ contract NVoting {
         p.againstAmount = 0;
         p.canceled = false;
 
-        emit CreateProposal(
-            p.id,
-            msg.sender,
-            p.startBlock,
-            p.endBlock
-        );
+        emit CreateProposal(p.id, msg.sender, p.startBlock, p.endBlock);
         return proposalId;
     }
 
@@ -114,15 +114,18 @@ contract NVoting {
      * @notice get ptoposal info
      * @param proposalId_  proposalId
      */
-    function getProposal(uint proposalId_) external view
+    function getProposal(uint256 proposalId_)
+        external
+        view
         returns (
             address proposer,
-            string memory  proposalUri,
+            string memory proposalUri,
             uint8 votingOption,
-            uint32  startBlock,
-            uint32  endBlock,
+            uint32 startBlock,
+            uint32 endBlock,
             bool canceled
-    ){
+        )
+    {
         return (
             _proposalList[proposalId_].proposer,
             _proposalList[proposalId_].proposalUri,
@@ -133,18 +136,15 @@ contract NVoting {
         );
     }
 
-
     /**
      * @notice get total votes
      * @param proposalId_  proposalId
      */
-    function getProposalVotes(
-        uint proposalId_
-    )
+    function getProposalVotes(uint256 proposalId_)
         external
         view
         validProposalId(proposalId_)
-        returns(uint totalVotes)
+        returns (uint256 totalVotes)
     {
         Proposal storage p = _proposalList[proposalId_];
         totalVotes = p.forAmount.add(p.againstAmount);
@@ -155,11 +155,11 @@ contract NVoting {
      * @notice get ptoposal info
      * @param proposalId_  proposalId
      */
-    function getStatus(uint proposalId_)
+    function getStatus(uint256 proposalId_)
         public
         view
         validProposalId(proposalId_)
-        returns(ProposalStatus)
+        returns (ProposalStatus)
     {
         Proposal storage p = _proposalList[proposalId_];
         if (p.canceled) {
@@ -170,17 +170,16 @@ contract NVoting {
             return ProposalStatus.Active;
         } else if (p.forAmount <= p.againstAmount) {
             return ProposalStatus.Defeated;
-        } else{
+        } else {
             return ProposalStatus.Succeeded;
         }
     }
-
 
     /**
      * @notice cancele a proposal
      * @dev only proposer can cancele
      */
-    function cancelProposal(uint proposalId_)
+    function cancelProposal(uint256 proposalId_)
         external
         onlyProposeOwner(proposalId_)
     {
@@ -188,21 +187,17 @@ contract NVoting {
         emit CancelProposal(proposalId_);
     }
 
-
     /**
      * @notice cancele a proposal
      * @dev only proposer can cancele
      */
-    function castVote(
-        uint proposalId_ ,
-        bool vote_
-    )
+    function castVote(uint256 proposalId_, bool vote_)
         external
         onlyMember(msg.sender)
         validProposalId(proposalId_)
         haventVoted(proposalId_)
     {
-        uint nTokenBalance = _nLock.balanceOf(msg.sender);
+        uint256 nTokenBalance = _nLock.balanceOf(msg.sender);
         Proposal storage p = _proposalList[proposalId_];
         ProposalStatus s = getStatus(proposalId_);
         require(
@@ -211,11 +206,11 @@ contract NVoting {
         );
 
         // @Todo:: add Quadratic Voting functionality like Gitcoin
-        uint weight = nTokenBalance;
-        if(vote_){
+        uint256 weight = nTokenBalance;
+        if (vote_) {
             p.forAmount = p.forAmount.add(weight);
             p.forVoters[msg.sender] = weight;
-        }else{
+        } else {
             p.againstAmount = p.againstAmount.add(weight);
             p.agaistVoters[msg.sender] = weight;
         }
@@ -223,15 +218,14 @@ contract NVoting {
         emit CastVote(msg.sender, proposalId_, vote_, weight);
     }
 
-
-/**
- *  Modifiers
- */
-    modifier onlyProposeOwner(uint proposalId_){
+    /**
+     *  Modifiers
+     */
+    modifier onlyProposeOwner(uint256 proposalId_) {
         require(
             msg.sender == _proposalList[proposalId_].proposer,
             "NVoting::You are not a propose Owner"
-            );
+        );
         _;
     }
 
@@ -243,19 +237,19 @@ contract NVoting {
         _;
     }
 
-    modifier haventVoted(uint proposalId_) {
+    modifier haventVoted(uint256 proposalId_) {
         require(
             _proposalList[proposalId_].forVoters[msg.sender] == 0,
             "NVoting::You already voted for this proposal"
         );
         require(
-            _proposalList[proposalId_].agaistVoters[msg.sender] ==  0,
+            _proposalList[proposalId_].agaistVoters[msg.sender] == 0,
             "NVoting::You already voted against this proposal"
         );
         _;
     }
 
-    modifier validProposalId(uint proposalId_) {
+    modifier validProposalId(uint256 proposalId_) {
         require(
             _proposalCount >= proposalId_ && proposalId_ > 0,
             "NVoting::Invalid proposal ID"
@@ -263,7 +257,7 @@ contract NVoting {
         _;
     }
 
-    modifier validBlock(uint startBlock, uint endBlock) {
+    modifier validBlock(uint256 startBlock, uint256 endBlock) {
         require(
             startBlock >= block.number + _minVotingPeriod,
             "NVoting::Invalid start block number"
@@ -275,6 +269,7 @@ contract NVoting {
         _;
     }
 }
+
 interface NLockInterface {
-    function balanceOf(address addr_)external view returns(uint);
+    function balanceOf(address addr_) external view returns (uint256);
 }
