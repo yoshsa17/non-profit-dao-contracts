@@ -14,6 +14,6 @@
   "license": "ISC",
   "dependencies": {
     "solhint": "^3.3.6",
-    "web3": "^1.3.6"
+    "web3": "^1.4.0"
   }
 }
