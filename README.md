@@ -2,7 +2,7 @@
 
 ![np-dao](./images/np-dao.png)
 
-## Description
+## About
 
 Simple DAO prototype for my research seminar
 
