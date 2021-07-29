@@ -5,6 +5,7 @@ contract("NLock", async accounts => {
   let nLock;
   let nToken;
   const SIX_MONTH = (60 * 60 * 24 * 365) / 2;
+  const DAY = 24 * 60 * 60;
   const now = Math.round(new Date().getTime() / 1000);
   beforeEach(async () => {
     nLock = await NLock.deployed();
@@ -33,7 +34,7 @@ contract("NLock", async accounts => {
   });
 
   describe("createLock", () => {
-    const unlockTime = now + SIX_MONTH;
+    const UNLOCK_TIME = now + SIX_MONTH;
 
     it("should approve NLock.address", async () => {
       await nToken.approve(NLock.address, 10);
@@ -42,7 +43,7 @@ contract("NLock", async accounts => {
     });
 
     it("should transfer from msg.sender to NLock.address", async () => {
-      await nLock.createLock(10, unlockTime);
+      await nLock.createLock(10, UNLOCK_TIME);
       const nTokenBalanceOfAccount1 = await nToken.balanceOf(accounts[0]);
       const nTokenBalance = await nToken.balanceOf(NLock.address);
       assert.equal(nTokenBalanceOfAccount1, 9990);
@@ -53,6 +54,13 @@ contract("NLock", async accounts => {
       const balance = await nLock.balanceOf(accounts[0]);
       // 10 NPO * 6 month / 12 month = 5 loNPO
       assert.equal(balance, 5);
+    });
+
+    it("should return lockInfo", async () => {
+      const res = await nLock.getLockInfo(accounts[0]);
+      assert.equal(res.amount, 10);
+      const unlockTime = Math.floor(UNLOCK_TIME / DAY) * DAY;
+      assert.equal(res.unlockTime, unlockTime);
     });
   });
 
