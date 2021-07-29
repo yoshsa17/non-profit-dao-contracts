@@ -65,13 +65,17 @@ contract NLock {
         return _totalSupply;
     }
 
-    function getLockPeriod(address addr_)
+    function getLockInfo(address addr_)
         external
         view
-        returns (uint256 unlockTime, uint256 lockTime)
+        returns (
+            uint256 amount,
+            uint256 unlockTime,
+            uint256 lockTime
+        )
     {
         LockedBlance memory lock = _lockedBalances[addr_];
-        return (lock.unlockTime, lock.lockTime);
+        return (lock.amount, lock.unlockTime, lock.lockTime);
     }
 
     /**
