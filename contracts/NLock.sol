@@ -145,19 +145,6 @@ contract NLock {
         return true;
     }
 
-    //@todo add increaseLock function
-    // /**
-    //  * @notice Increase locked Ntoken amount
-    //  * @param amt_ Amount of NPO to increase loNPO
-    //  */
-    // function increaseLock(uint256 amt_)
-    //     external
-    //     hasLockedNToken(msg.sender)
-    //     returns (bool)
-    // {
-    //     return true;
-    // }
-
     modifier hasLockedNToken(address addr_) {
         require(
             _lockedBalances[addr_].amount > 0,
