@@ -65,6 +65,14 @@ contract NLock {
         return _totalSupply;
     }
 
+    function getLockInfo(address addr_)
+        external
+        view
+        returns (LockedBlance memory)
+    {
+        return _lockedBalances[addr_];
+    }
+
     /**
      * @notice Get the current voting power for "msg.sender"
      * @param addr_ user EOA address
