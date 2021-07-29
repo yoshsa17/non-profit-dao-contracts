@@ -57,9 +57,10 @@ contract("NLock", async accounts => {
     });
 
     it("should return LockTime and unLocktime", async () => {
-      const res = await nLock.getLockPeriod(accounts[0]);
+      const res = await nLock.getLockInfo(accounts[0]);
       const unlockTime = Math.floor(UNLOCK_TIME / DAY) * DAY;
       const lockTime = Math.floor(now / DAY) * DAY;
+      assert.equal(res.amount, 10);
       assert.equal(res.unlockTime, unlockTime);
       assert.equal(res.lockTime, lockTime);
     });
