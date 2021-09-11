@@ -1,4 +1,4 @@
-# Non-profit DAO (On-chain governance DAO for social goods)<br>
+# Non-profit DAO<br>
 
 ![np-dao](./images/np-dao.png)
 
