@@ -67,7 +67,7 @@ contract("NLock", async accounts => {
   });
 
   describe("withdraw", () => {
-    it("should fail to withdraw with lock time", async () => {
+    it("should fail to withdraw with invalid lock time", async () => {
       let errMsg;
       try {
         await nLock.withdraw({ from: accounts[4] });

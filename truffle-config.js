@@ -18,12 +18,6 @@
  *
  */
 
-// const HDWalletProvider = require('@truffle/hdwallet-provider');
-// const infuraKey = "fj4jll3k.....";
-//
-// const fs = require('fs');
-// const mnemonic = fs.readFileSync(".secret").toString().trim();
-
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -43,8 +37,8 @@ module.exports = {
     // options below to some value.
     //
     development: {
-      host: "127.0.0.1", // Localhost (default: none)
-      port: 7545, // Standard Ethereum port (default: none)
+      host: "0.0.0.0", // Localhost (default: none)
+      port: 8545, // Standard Ethereum port (default: none)
       network_id: "5777", // Any network (default: none)
       gas: 5500000,
       gasPrice: 20000000000
@@ -77,9 +71,9 @@ module.exports = {
   },
 
   // Set default mocha options here, use special reporters etc.
-  mocha: {
-    // timeout: 100000
-  },
+  // mocha: {
+  //   timeout: 100000
+  // },
 
   // Configure your compilers
   compilers: {
