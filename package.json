@@ -8,7 +8,8 @@
   },
   "scripts": {
     "solhint": "solhint 'contracts/**/*.sol'",
-    "migrate": "truffle migrate --reset"
+    "migrate": "truffle migrate --reset",
+    "test": "truffle test"
   },
   "author": "",
   "license": "ISC",
