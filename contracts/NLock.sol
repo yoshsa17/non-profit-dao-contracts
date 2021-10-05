@@ -25,7 +25,7 @@ contract NLock {
     }
     mapping(address => LockedBlance) internal _lockedBalances;
 
-    /// @notice An event emitted when a user withdraws Ntoken after its locktime has passed
+    /// @notice An event emitted when a user withdraws Ntoken after its locktime
     event Withdraw(address dst_, uint256 amt_);
 
     /// @notice An event emitted when a user locks their NToken
