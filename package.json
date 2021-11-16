@@ -1,5 +1,5 @@
 {
-  "name": "project",
+  "name": "non-profit-dao-contract",
   "version": "1.0.0",
   "description": "",
   "main": "truffle-config.js",
@@ -7,15 +7,17 @@
     "test": "test"
   },
   "scripts": {
-    "lint": "solhint 'contracts/**/*.sol'",
     "migrate": "truffle migrate --reset",
     "test": "truffle test"
   },
-  "author": "",
+  "author": "Yoshiro Saito",
   "license": "ISC",
+  "devDependencies": {
+    "prettier": "^2.4.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.18",
+    "truffle": "^5.1.67"
+  },
   "dependencies": {
-    "solhint": "^3.3.6",
-    "truffle": "^5.4.13",
-    "web3": "^1.4.0"
+    "@openzeppelin/contracts": "^4.3.2"
   }
 }

@@ -1,15 +1,13 @@
-const NToken = artifacts.require("NToken");
-const NTreasury = artifacts.require("NTreasury");
-const NVoting = artifacts.require("NVoting");
-const NLock = artifacts.require("NLock");
+const NToken = artifacts.require("NToken.sol");
+const Reputation = artifacts.require("Reputation");
+const Treasury = artifacts.require("Treasury");
+const Voting = artifacts.require("Voting");
 
-// 365 days == 365days * 24hour * 60min * 60sec (epoch time)
-const maxLockTime = 365 * 24 * 60 * 60;
-const minLockTime = 0;
+module.exports = async (deployer, network, accounts) => {
+  const initialMembers = [accounts[0], accounts[1], accounts[2]];
 
-module.exports = async deployer => {
-  await deployer.deploy(NTreasury);
-  await deployer.deploy(NToken, 10000);
-  await deployer.deploy(NLock, NToken.address, maxLockTime, minLockTime);
-  await deployer.deploy(NVoting, NLock.address);
+  await deployer.deploy(NToken);
+  await deployer.deploy(Voting);
+  await deployer.deploy(Reputation, initialMembers, Voting.address);
+  await deployer.deploy(Treasury, NToken.address, Voting.address);
 };
