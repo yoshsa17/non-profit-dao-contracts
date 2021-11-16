@@ -125,10 +125,10 @@ contract Voting {
         if (proposerReputation < _proposalThreshold) {
             revert ReputationBelowThreshold();
         }
-        // if (
-        //     targets.length != values.length ||
-        //     targets.length != calldatas.length
-        // ) revert InvalidOperationNumber();
+        if (
+            targets.length != values.length ||
+            targets.length != calldatas.length
+        ) revert InvalidOperationNumber();
         if (targets.length > _proposalMaxOperations || targets.length == 0) {
             revert InvalidOperationNumber();
         }

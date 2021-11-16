@@ -105,8 +105,7 @@ contract Reputation {
     }
 
     function slash(address account) external returns (bool) {
-        // if (msg.sender != _governance) revert onlyGovernance();
-
+        if (msg.sender != _governance) revert OnlyGovernance();
         _slashedAddresses[account] = true;
         return true;
     }
