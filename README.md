@@ -4,7 +4,7 @@ Simple DAO prototype
 
 - Reputation-based voting
 - ERC-20 compatible DAO token
-- Real-time accounting
+- Transparent and Real-time accounting
 - Contributor Evaluation system
 
 ### Based on
