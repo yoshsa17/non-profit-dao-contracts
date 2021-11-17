@@ -13,7 +13,7 @@ contract Reputation {
     address private _governance;
 
     struct ReputationDetail {
-        address eveluator;
+        address evaluator;
         uint256 validByBlock;
     }
 
@@ -139,7 +139,7 @@ contract Reputation {
     ) internal {
         if (dst.length != reasons.length) revert InvalidArrayLength();
         ReputationDetail memory newReputation = ReputationDetail({
-            eveluator: src,
+            evaluator: src,
             validByBlock: block.number + _maxReputationValidPeriod
         });
 
