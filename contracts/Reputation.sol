@@ -14,7 +14,7 @@ contract Reputation {
 
     struct ReputationDetail {
         address evaluator;
-        uint256 validByBlock;
+        uint256 expirationBlock;
     }
 
     mapping(address => ReputationDetail[]) private _reputations;
@@ -69,12 +69,12 @@ contract Reputation {
         uint256 totalReputation;
 
         for (uint256 i; i < rawReputations.length; i++) {
-            uint256 validByBlock = rawReputations[i].validByBlock;
+            uint256 expirationBlock = rawReputations[i].expirationBlock;
             uint256 remainingBlocks;
 
-            if (validByBlock < block.number) continue;
+            if (expirationBlock < block.number) continue;
             unchecked {
-                remainingBlocks = validByBlock - block.number;
+                remainingBlocks = expirationBlock - block.number;
             }
 
             uint256 percentage = (remainingBlocks * 100) /
@@ -140,7 +140,7 @@ contract Reputation {
         if (dst.length != reasons.length) revert InvalidArrayLength();
         ReputationDetail memory newReputation = ReputationDetail({
             evaluator: src,
-            validByBlock: block.number + _maxReputationValidPeriod
+            expirationBlock: block.number + _maxReputationValidPeriod
         });
 
         for (uint8 i = 0; i < dst.length; i++) {

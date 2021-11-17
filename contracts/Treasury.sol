@@ -21,9 +21,9 @@ contract Treasury {
     uint256 private _transactionCount;
 
     // Event
+    // TODO:: add uint256 proposalId,
     event EtherSent(
         uint256 transactionId,
-        uint256 proposalId,
         address tareget,
         uint256 amount,
         string information
@@ -88,7 +88,7 @@ contract Treasury {
 
     // send only ether
     function send(
-        uint256 proposalId,
+        // uint256 proposalId,
         address target,
         uint256 amount,
         string memory information
@@ -103,7 +103,7 @@ contract Treasury {
         _recordTransaction(address(0), msg.sender, false, amount, information);
         emit EtherSent(
             _transactionCount,
-            proposalId,
+            // proposalId,
             msg.sender,
             amount,
             information
