@@ -16,3 +16,7 @@ Simple DAO prototype
 - Aragon
 - DAOstack
 - Gitcoin.co
+
+### Contract diagram
+
+![Contract diagram](./non-profit-dao-contracts.svg)
