@@ -85,7 +85,7 @@ contract Reputation {
         return totalReputation;
     }
 
-    function evaluate(address[] calldata contiributors, string[] memory reasons)
+    function evaluate(address[] calldata contributors, string[] memory reasons)
         external
         returns (bool)
     {
@@ -98,9 +98,9 @@ contract Reputation {
             }
         }
         if (!flag) revert OnlyEveluator();
-        if (contiributors.length > _maxEvaluation) revert InvalidEvaluation();
+        if (contributors.length > _maxEvaluation) revert InvalidEvaluation();
 
-        _mint(msg.sender, contiributors, reasons);
+        _mint(msg.sender, contributors, reasons);
         return true;
     }
 
