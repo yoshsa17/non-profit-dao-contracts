@@ -3,13 +3,13 @@ pragma solidity ^0.8.7;
 
 contract Reputation {
     // State
-    uint8 private constant REPUTATION_VALUE = 100;
-    uint8 private constant MAX_EVALUATION = 3;
-    uint8 private constant MAX_EVALUATIORS = 10;
+    uint8 private _reputationValue = 100;
+    uint8 private _maxEvaluation = 3;
+    uint8 private _maxEvaluatiors = 10;
     // 100days 664615 blocks  60*60*24*5/13
-    uint96 private constant MAX_REPUTATION_VALID_PERIOD = 664615;
+    uint96 private _maxReputationValidPeriod = 664615;
     // 5days 33230 blocks  60*60*24*5/13(assuming 13s block time)
-    uint256 private constant EVALUATION_PERIOD = 33230;
+    uint256 private _evaluationPeriod = 33230;
     address private _governance;
 
     struct ReputationDetail {
@@ -78,8 +78,8 @@ contract Reputation {
             }
 
             uint256 percentage = (remainingBlocks * 100) /
-                MAX_REPUTATION_VALID_PERIOD;
-            uint256 realReputation = REPUTATION_VALUE / (100 / percentage);
+                _maxReputationValidPeriod;
+            uint256 realReputation = _reputationValue / (100 / percentage);
             totalReputation += realReputation;
         }
         return totalReputation;
@@ -98,7 +98,7 @@ contract Reputation {
             }
         }
         if (!flag) revert OnlyEveluator();
-        if (contiributors.length > MAX_EVALUATION) revert InvalidEvaluation();
+        if (contiributors.length > _maxEvaluation) revert InvalidEvaluation();
 
         _mint(msg.sender, contiributors, reasons);
         return true;
@@ -117,12 +117,12 @@ contract Reputation {
         if (msg.sender != _governance) revert OnlyGovernance();
         if (block.number < _evaluationEndBlock)
             revert OverlappingEvaluationPeriod();
-        if (MAX_EVALUATIORS < evaluators.length)
+        if (_maxEvaluatiors < evaluators.length)
             revert InvalidEvaluatorsNumber();
 
         _evaluators = evaluators;
         _evaluationStartBlock = block.number;
-        _evaluationEndBlock = block.number + EVALUATION_PERIOD;
+        _evaluationEndBlock = block.number + _evaluationPeriod;
 
         emit EveluationStarted(
             evaluators,
@@ -140,7 +140,7 @@ contract Reputation {
         if (dst.length != reasons.length) revert InvalidArrayLength();
         ReputationDetail memory newReputation = ReputationDetail({
             eveluator: src,
-            validByBlock: block.number + MAX_REPUTATION_VALID_PERIOD
+            validByBlock: block.number + _maxReputationValidPeriod
         });
 
         for (uint8 i = 0; i < dst.length; i++) {
@@ -151,7 +151,7 @@ contract Reputation {
             emit ReputationMinted(
                 src,
                 dst[i],
-                block.number + MAX_REPUTATION_VALID_PERIOD,
+                block.number + _maxReputationValidPeriod,
                 reasons[i]
             );
         }
