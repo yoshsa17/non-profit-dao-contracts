@@ -61,11 +61,11 @@ contract("NToken", async (accounts) => {
 
     describe("events during transferring", () => {
       it("emits a transfer event", async () => {
-        const { logs } = await token.transfer(RECEIVER, new BN(ONE_TOKEN), {
+        const txReceipt = await token.transfer(RECEIVER, new BN(ONE_TOKEN), {
           from: CONTRACT_CREATOR,
         });
 
-        expectEvent.inLogs(logs, "Transfer", {
+        await expectEvent(txReceipt, "Transfer", {
           from: CONTRACT_CREATOR,
           to: RECEIVER,
           value: new BN(ONE_TOKEN),
@@ -74,29 +74,29 @@ contract("NToken", async (accounts) => {
     });
 
     describe("reverts during transferring", () => {
-      // InsufficientBalance()
+      // InsufficientBalance
       it("reverts if the amount exceeds source's amount", async () => {
         const balance = await token.balanceOf(CONTRACT_CREATOR);
 
-        expectRevert.unspecified(
+        await expectRevert.unspecified(
           token.transfer(RECEIVER, balance.add(new BN(ONE_TOKEN)), {
             from: CONTRACT_CREATOR,
           })
         );
       });
 
-      // ZeroAmount()
+      // ZeroAmount
       it("reverts if the amount is zero", async () => {
-        expectRevert.unspecified(
+        await expectRevert.unspecified(
           token.transfer(RECEIVER, new BN(ZERO_TOKEN), {
             from: CONTRACT_CREATOR,
           })
         );
       });
 
-      // ZeroAddress()
+      // ZeroAddress
       it("reverts if the target is Zero Address", async () => {
-        expectRevert.unspecified(
+        await expectRevert.unspecified(
           token.transfer(ZERO_ADDRESS, new BN(ONE_TOKEN), {
             from: CONTRACT_CREATOR,
           })
@@ -140,11 +140,11 @@ contract("NToken", async (accounts) => {
 
     describe("events during execution of approve/transferFrom", () => {
       it("emits a approval event", async () => {
-        const { logs } = await token.approve(OTHERS[0], new BN(TEN_TOKEN), {
+        const txReceipt = await token.approve(OTHERS[0], new BN(TEN_TOKEN), {
           from: CONTRACT_CREATOR,
         });
 
-        expectEvent.inLogs(logs, "Approval", {
+        await expectEvent(txReceipt, "Approval", {
           owner: CONTRACT_CREATOR,
           spender: OTHERS[0],
           value: new BN(TEN_TOKEN),
@@ -155,7 +155,7 @@ contract("NToken", async (accounts) => {
     describe("reverts during execution of approve/transferFrom", () => {
       // ZeroAddress()
       it("reverts if approval target is zero address", async () => {
-        expectRevert.unspecified(
+        await expectRevert.unspecified(
           token.approve(ZERO_ADDRESS, new BN(TEN_TOKEN), {
             from: CONTRACT_CREATOR,
           })
@@ -168,14 +168,12 @@ contract("NToken", async (accounts) => {
           from: CONTRACT_CREATOR,
         });
 
-        expectRevert.unspecified(
-          token.transferFrom(
-            RECEIVER,
-            new BN(TEN_TOKEN).add(new BN(TEN_TOKEN)),
-            {
-              from: CONTRACT_CREATOR,
-            }
-          )
+        const exceedAmount = new BN(toWei("1000"));
+
+        await expectRevert.unspecified(
+          token.transferFrom(CONTRACT_CREATOR, RECEIVER, exceedAmount, {
+            from: OTHERS[0],
+          })
         );
       });
     });

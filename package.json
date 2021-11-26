@@ -7,17 +7,21 @@
     "test": "test"
   },
   "scripts": {
+    "test": "truffle test",
     "migrate": "truffle migrate --reset",
-    "test": "truffle test"
+    "bc": "ganache-cli -h 127.0.0.1 -m 'myCustomSeed'"
   },
   "author": "Yoshiro Saito",
   "license": "ISC",
   "devDependencies": {
+    "@openzeppelin/test-helpers": "^0.5.15",
+    "ethers": "^5.5.1",
     "prettier": "^2.4.1",
     "prettier-plugin-solidity": "^1.0.0-beta.18",
     "truffle": "^5.1.67"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.3.2"
+    "@openzeppelin/contracts": "^4.3.3",
+    "ganache": "^7.0.0-alpha.2"
   }
 }

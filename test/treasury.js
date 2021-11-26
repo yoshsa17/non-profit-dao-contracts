@@ -1,80 +1,210 @@
-const NTreasury = artifacts.require("Treasury");
-const NToken = artifacts.require("NToken");
-const ZERO_ADDRESS = `0x0000000000000000000000000000000000000000`;
+const {
+  BN,
+  constants,
+  expectEvent,
+  expectRevert,
+} = require("@openzeppelin/test-helpers");
+const { expect } = require("chai");
 
-contract("NTreasury", async (accounts) => {
-  let instance;
-  beforeEach(async () => {
-    instance = await NTreasury.deployed();
+const NToken = artifacts.require("NToken");
+const Treasury = artifacts.require("Treasury");
+const MockVoting = artifacts.require("MockVoting");
+
+const { toWei } = web3.utils;
+
+contract("Treasury", async (accounts) => {
+  const [SENDER, RECIPIENT, ...OTHERS] = accounts;
+  const ONE_ETHER = new BN(toWei("1"));
+  const ZERO_ADDRESS = constants.ZERO_ADDRESS;
+
+  let token;
+  let mockVoting;
+  let treasury;
+  before(async () => {
+    token = await NToken.new();
+    mockVoting = await MockVoting.new();
+    treasury = await Treasury.new(token.address, mockVoting.address);
+    await mockVoting.initTreasury(treasury.address);
   });
 
   describe("constructor", () => {
-    it("should initialize state data", async () => {
-      const totalBalance = await web3.eth.getBalance(NTreasury.address);
-      const isNTokenAcceptable = await instance.isAcceptableToken(
-        NToken.address
-      );
-      assert.equal(totalBalance, "0");
-      assert.equal(isNTokenAcceptable, true);
+    it("sets initial values", async () => {
+      expect(await web3.eth.getBalance(treasury.address)).to.be.equal("0");
+      expect(await treasury.isAcceptableToken(token.address)).to.be.equal(true);
     });
   });
 
-  describe("deposit/send", () => {
-    const ONE_ETHER_IN_WEI = web3.utils.toWei("1", "ether");
-    let eventList;
-    let eventValue;
-
-    it("should receive ether(fallback function)", async () => {
-      await web3.eth.sendTransaction({
-        from: accounts[0],
-        to: NTreasury.address,
-        value: ONE_ETHER_IN_WEI,
-        gasPrice: 10000000,
-        gasLimit: 6721975,
+  describe("fallback function", () => {
+    let txReceipt;
+    before(async () => {
+      txReceipt = await treasury.sendTransaction({
+        from: SENDER,
+        value: ONE_ETHER,
       });
-      eventList = await instance.getPastEvents("EtherDeposited");
-      eventValue = eventList[0].returnValues;
-      const totalBalance = await web3.eth.getBalance(NTreasury.address);
-      assert.equal(eventValue.transactionId, "1");
-      assert.equal(eventValue.source, accounts[0]);
-      assert.equal(eventValue.amount, ONE_ETHER_IN_WEI);
-      assert.equal(eventValue.information, "");
-      assert.equal(totalBalance, ONE_ETHER_IN_WEI);
     });
 
-    it("should receive ether(deposit function)", async () => {
-      const TEST_REFERENCE = "TEST TRANSACTION";
-      await instance.deposit(TEST_REFERENCE, { value: ONE_ETHER_IN_WEI });
-
-      eventList = await instance.getPastEvents("EtherDeposited");
-      eventValue = eventList[0].returnValues;
-      const totalBalance = await web3.eth.getBalance(NTreasury.address);
-      assert.equal(eventValue.transactionId, "2");
-      assert.equal(eventValue.source, accounts[0]);
-      assert.equal(eventValue.amount, ONE_ETHER_IN_WEI);
-      assert.equal(eventValue.information, TEST_REFERENCE);
-      assert.equal(totalBalance, ONE_ETHER_IN_WEI * 2);
+    it("returns the transaction information (fallback function)", async () => {
+      expect(await treasury.getTransaction(1)).deep.to.be.equal([
+        ZERO_ADDRESS,
+        SENDER,
+        true,
+        ONE_ETHER.toString(),
+        "",
+      ]);
     });
 
-    // TODO:: test with a transaction from governance contract
-    // it("should send ether to account[1] from NTreasury", async () => {
-    //   await instance.send(accounts[1], v / 2, "[p-Id:3232]workforce expenses");
-    //   const totalFunds = await instance.getTotalFunds();
-    //   assert.equal(web3.utils.fromWei(totalFunds, "ether"), 0.005);
-    // });
+    it("increases the treasury contract balance (1ETH)", async () => {
+      expect(await web3.eth.getBalance(treasury.address)).to.be.bignumber.equal(
+        ONE_ETHER.toString()
+      );
+    });
 
-    // it("should return transaction Transaction record ", async () => {
-    //   const first = await instance.getTxRecord(1);
-    //   const second = await instance.getTxRecord(2);
-    //   assert.equal(first.src, accounts[0]);
-    //   assert.equal(first.dst, NTreasury.address);
-    //   assert.equal(first.amt, v);
-    //   assert.equal(first.info, "Donation");
+    it("emits a EtherDeposited event", async () => {
+      expectEvent(txReceipt, "EtherDeposited", {
+        transactionId: new BN("1"),
+        source: SENDER,
+        amount: ONE_ETHER,
+        information: "",
+      });
+    });
+  });
 
-    //   assert.equal(second.src, NTreasury.address);
-    //   assert.equal(second.dst, accounts[1]);
-    //   assert.equal(second.amt, v / 2);
-    //   assert.equal(second.info, "[p-Id:3232]workforce expenses");
-    // });
+  describe("deposit", () => {
+    let txReceipt;
+    const TEST_REFERENCE = "TEST TRANSACTION";
+
+    describe("SENDER deposit 1 ETH with a reference", () => {
+      before(async () => {
+        txReceipt = await treasury.deposit(TEST_REFERENCE, {
+          value: ONE_ETHER,
+          from: SENDER,
+        });
+      });
+
+      it("returns the transaction information (deposit function)", async () => {
+        expect(await treasury.getTransaction(2)).deep.to.be.equal([
+          ZERO_ADDRESS,
+          SENDER,
+          true,
+          ONE_ETHER.toString(),
+          TEST_REFERENCE,
+        ]);
+      });
+
+      it("emits a EtherDeposited event including a reference", async () => {
+        expectEvent(txReceipt, "EtherDeposited", {
+          transactionId: new BN("2"),
+          source: SENDER,
+          amount: ONE_ETHER,
+          information: TEST_REFERENCE,
+        });
+      });
+
+      it("increases treasury contract balance (2ETH)", async () => {
+        expect(
+          await web3.eth.getBalance(treasury.address)
+        ).to.be.bignumber.equal(ONE_ETHER.mul(new BN("2")));
+      });
+    });
+
+    describe("Reverts during calling `deposit`", () => {
+      // ZeroValue
+      it("reverts if tx.value is zero", async () => {
+        await expectRevert.unspecified(
+          treasury.deposit(TEST_REFERENCE, {
+            value: 0,
+            from: SENDER,
+          })
+        );
+      });
+      // InvalidInformationLength
+      it("reverts if the information length is longer `MAX_TX_INFO_LENGTH`", async () => {
+        await expectRevert.unspecified(
+          treasury.deposit("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", {
+            value: ONE_ETHER,
+            from: SENDER,
+          })
+        );
+      });
+    });
+  });
+
+  describe("send", () => {
+    let txReceipt;
+    const TEST_REFERENCE = "PAYMENT";
+
+    describe("Treasury contract sends 1 ETH to RECIPIENT", () => {
+      before(async () => {
+        txReceipt = await mockVoting.callSend(
+          RECIPIENT,
+          ONE_ETHER,
+          TEST_REFERENCE
+        );
+      });
+
+      it("returns the transaction information", async () => {
+        expect(await treasury.getTransaction(3)).deep.to.be.equal([
+          ZERO_ADDRESS,
+          RECIPIENT,
+          false,
+          ONE_ETHER.toString(),
+          TEST_REFERENCE,
+        ]);
+      });
+
+      it("emits a EtherSent event with a reference", async () => {
+        expectEvent.inTransaction(txReceipt.tx, treasury, "EtherSent", {
+          transactionId: new BN("3"),
+          target: RECIPIENT,
+          amount: ONE_ETHER.toString(),
+          information: TEST_REFERENCE,
+        });
+      });
+
+      it("decreases treasury contract balance (1ETH)", async () => {
+        expect(
+          await web3.eth.getBalance(treasury.address)
+        ).to.be.bignumber.equal(ONE_ETHER);
+      });
+    });
+
+    describe("Reverts during calling `send`", () => {
+      // OnlyGovernance
+      it("reverts if msg.sender is not the voting contract", async () => {
+        await expectRevert.unspecified(
+          treasury.send(RECIPIENT, ONE_ETHER, TEST_REFERENCE, {
+            from: SENDER,
+          })
+        );
+      });
+
+      // InsufficientBalance
+      it("reverts if the treasury contract balance < amount", async () => {
+        const TEN_ETHER = ONE_ETHER.mul(new BN("10"));
+        await expectRevert.unspecified(
+          mockVoting.callSend(RECIPIENT, TEN_ETHER, TEST_REFERENCE)
+        );
+      });
+
+      // TODO:: find how to make the transaction fail
+      // TransactionFailed
+      // it("reverts if msg.sender is not voting contract", async () => {
+      //   await expectRevert.unspecified();
+      // });
+
+      // InvalidInformationLength
+      it("reverts if msg.sender is not voting contract", async () => {
+        await expectRevert.unspecified(
+          treasury.send(
+            RECIPIENT,
+            ONE_ETHER,
+            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            {
+              from: SENDER,
+            }
+          )
+        );
+      });
+    });
   });
 });
