@@ -1,20 +1,15 @@
 const {
   BN,
-  constants,
   expectEvent,
   expectRevert,
   time,
 } = require("@openzeppelin/test-helpers");
-const { assertion } = require("@openzeppelin/test-helpers/src/expectRevert");
 const { web3 } = require("@openzeppelin/test-helpers/src/setup");
 const { expect } = require("chai");
 const { ethers } = require("ethers");
-const { toWei } = web3.utils;
 
 const Voting = artifacts.require("Voting");
 const Reputation = artifacts.require("Reputation");
-// const NToken = artifacts.require("NToken");
-// const Treasury = artifacts.require("Treasury");
 const ActionTarget = artifacts.require("ActionTarget");
 
 const ActionTargetIface = new ethers.utils.Interface([
@@ -49,13 +44,9 @@ contract("Voting", async (accounts) => {
   let executeBlock;
   let transactionReceipt;
 
-  // let token;
-  // let treasury;
   before(async () => {
-    // token = await NToken.new();
     voting = await Voting.new();
     reputation = await Reputation.new(initialMembers, Voting.address);
-    // treasury = await Treasury.new(token.address, voting.address);
 
     actionTarget = await ActionTarget.deployed();
     await voting.init(reputation.address);
@@ -76,11 +67,6 @@ contract("Voting", async (accounts) => {
     const target = ActionTarget.address;
     const description = "add 5 to state value";
     const calldata = ActionTargetIface.encodeFunctionData("targetFun", [5]);
-    // const calldata = treasuryIface.encodeFunctionData("addNum", [
-    //   OTHERS[0],
-    //   TEN_ETHER,
-    //   "PAYMENT",
-    // ]);
 
     describe("PROPOSER proposes the first proposal", async () => {
       before(async () => {
@@ -111,7 +97,6 @@ contract("Voting", async (accounts) => {
         expect(res.proposer).to.be.equal(PROPOSER);
         expect(res.description).to.be.equal(description);
         expect(res.targets).deep.to.be.eql([target]);
-        // TODO:: fix
         expect(res.values[0]).to.be.bignumber.equal("0");
         expect(res.calldatas).deep.to.be.equal([calldata]);
         expect(res.startBlock).to.be.bignumber.equal(startBlock);
@@ -125,7 +110,6 @@ contract("Voting", async (accounts) => {
           proposer: PROPOSER,
           description: description,
           targets: [target],
-          // TODO:: fix
           // values: [new BN("0")],
           calldatas: [calldata],
           startBlock: startBlock,
@@ -307,45 +291,3 @@ contract("Voting", async (accounts) => {
     });
   });
 });
-// describe("cancel", () => {
-// before(() => {
-// await voting.cancel(1, { from: PROPOSER });
-// });
-//
-// it("cancels the first proposal", async () => {
-// const proposal1 = await voting.getProposal(1);
-// const status1 = await voting.getStatus(1);
-//
-// assert.equal(proposal2.canceled, true);
-// assert.equal(status2.toString(), ProposalStatus.Canceled);
-// });
-// it("emits a ProposalCanceled event", async () => {
-// ("ProposalCanceled");
-// assert.equal(eventValue.proposalId, 1);
-// });
-// });
-//
-// for (let i; i < initialMembers.length; i++) {
-//   let support = Math.floor(Math.random() * 4);
-//   let weight = await reputation.reputationOf(initialMembers[i]);
-//   let reason = `This is a reason from ${initialMembers[i]}`;
-
-//   transactionReceipt = await voting.castVote(1, support, reason, {
-//     from: initialMembers[i],
-//   });
-
-//   it(`emits a VoteCast event ${i}`, async () => {
-//     expectEvent(transactionReceipt, "ProposalCreated", {
-//       voter: initialMembers[i],
-//       proposalId: 1,
-//       voteType: support,
-//       amt: weight,
-//       reason,
-//     });
-//   });
-// }
-// it("executes and send 10 ETH from treasury to OTHERS[0]", async () => {
-//   expect(await web3.eth.getBalance(OTHERS[0])).to.be.equal(
-//     balanceOfReceiver.add(new BN(TEN_ETHER))
-//   );
-// });

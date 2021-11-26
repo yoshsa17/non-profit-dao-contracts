@@ -102,7 +102,7 @@ contract("Reputation", async (accounts) => {
     });
 
     describe("Reverts during calling `startEvaluation` function", () => {
-      // OnlyGovernance;
+      // OnlyGovernance
       it("reverts if transaction sender is not the voting contract", async () => {
         await expectRevert.unspecified(
           reputation.startEvaluation(INITIAL_MEMBERS)
