@@ -122,8 +122,6 @@ contract("Reputation", async (accounts) => {
     let txReceipt;
 
     const roundId = "1";
-    let _mintedTime;
-    let _expirationTime;
     const reasons = ["Nice work", "Nice work", "Nice work"];
     describe("Evaluate contributors", () => {
       before(async () => {
@@ -202,14 +200,6 @@ contract("Reputation", async (accounts) => {
         );
       });
 
-      // InvalidAddress (_mint) self-evaluation
-      // TODO:: fix this test. it doesn't catch reverts.
-      // it("reverts if the evaluator include their address to evaluation targets", async () => {
-      //   await expectRevert.unspecified(
-      //     reputation.evaluate(roundId, [E1, E4, E2], reasons, { from: E4 })
-      //   );
-      // });
-
       // OnlyEvaluationPeriod
       it("reverts if the evaluator call `evaluate` after the round closes", async () => {
         // mine blocks until the endBlock that the evaluation finish at
@@ -229,10 +219,9 @@ contract("Reputation", async (accounts) => {
       prevRep = await reputation.reputationOf(C4);
       await mockVoting.callSlash(C4);
     });
-    it("return 100 for the prev reputation Account", async () => {
+
+    it("returns 100 and zero for the slashed Account", async () => {
       expect(prevRep).to.be.bignumber.equal("100");
-    });
-    it("returns zero for the slashed Account", async () => {
       expect(await reputation.reputationOf(C4)).to.be.bignumber.equal("0");
     });
 

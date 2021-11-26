@@ -11,9 +11,8 @@ const NToken = artifacts.require("NToken");
 contract("NToken", async (accounts) => {
   const [CONTRACT_CREATOR, RECEIVER, , ...OTHERS] = accounts;
   const INITIAL_TOKEN_AMOUNT = toWei("1000");
-  const ONE_TOKEN = toWei("1");
-  const TEN_TOKEN = toWei("10");
-  const ZERO_TOKEN = toWei("0");
+  const ONE_TOKEN = new BN(toWei("1"));
+  const TEN_TOKEN = new BN(toWei("10"));
   const ZERO_ADDRESS = constants.ZERO_ADDRESS;
 
   let token;
@@ -47,28 +46,28 @@ contract("NToken", async (accounts) => {
   describe("transfer", () => {
     describe("CONTRACT_CREATOR transfers the requested amount", () => {
       it("returns expected amounts", async () => {
-        await token.transfer(RECEIVER, new BN(ONE_TOKEN), {
+        await token.transfer(RECEIVER, ONE_TOKEN, {
           from: CONTRACT_CREATOR,
         });
         expect(await token.balanceOf(CONTRACT_CREATOR)).to.be.bignumber.equal(
           toWei("999")
         );
         expect(await token.balanceOf(RECEIVER)).to.be.bignumber.equal(
-          ONE_TOKEN
+          ONE_TOKEN.toString()
         );
       });
     });
 
     describe("events during transferring", () => {
       it("emits a transfer event", async () => {
-        const txReceipt = await token.transfer(RECEIVER, new BN(ONE_TOKEN), {
+        const txReceipt = await token.transfer(RECEIVER, ONE_TOKEN, {
           from: CONTRACT_CREATOR,
         });
 
         await expectEvent(txReceipt, "Transfer", {
           from: CONTRACT_CREATOR,
           to: RECEIVER,
-          value: new BN(ONE_TOKEN),
+          value: ONE_TOKEN,
         });
       });
     });
@@ -79,7 +78,7 @@ contract("NToken", async (accounts) => {
         const balance = await token.balanceOf(CONTRACT_CREATOR);
 
         await expectRevert.unspecified(
-          token.transfer(RECEIVER, balance.add(new BN(ONE_TOKEN)), {
+          token.transfer(RECEIVER, balance.add(ONE_TOKEN), {
             from: CONTRACT_CREATOR,
           })
         );
@@ -88,7 +87,7 @@ contract("NToken", async (accounts) => {
       // ZeroAmount
       it("reverts if the amount is zero", async () => {
         await expectRevert.unspecified(
-          token.transfer(RECEIVER, new BN(ZERO_TOKEN), {
+          token.transfer(RECEIVER, ONE_TOKEN, {
             from: CONTRACT_CREATOR,
           })
         );
@@ -97,7 +96,7 @@ contract("NToken", async (accounts) => {
       // ZeroAddress
       it("reverts if the target is Zero Address", async () => {
         await expectRevert.unspecified(
-          token.transfer(ZERO_ADDRESS, new BN(ONE_TOKEN), {
+          token.transfer(ZERO_ADDRESS, ONE_TOKEN, {
             from: CONTRACT_CREATOR,
           })
         );
@@ -108,46 +107,41 @@ contract("NToken", async (accounts) => {
   describe("approve/transferFrom", () => {
     describe("OTHERS[0] transfers 10 NPO from CONTRACT_CREATOR to RECEIVER", () => {
       it("approves 10 NPO to OTHERS[0]", async () => {
-        await token.approve(OTHERS[0], new BN(TEN_TOKEN), {
+        await token.approve(OTHERS[0], TEN_TOKEN, {
           from: CONTRACT_CREATOR,
         });
         expect(
           await token.allowance(CONTRACT_CREATOR, OTHERS[0])
-        ).to.be.bignumber.equal(TEN_TOKEN);
+        ).to.be.bignumber.equal(TEN_TOKEN.toString());
       });
 
       it("transfers 10 NPO from CONTRACT_CREATOR to RECEIVER", async () => {
-        await token.approve(OTHERS[0], new BN(TEN_TOKEN), {
+        await token.approve(OTHERS[0], TEN_TOKEN, {
           from: CONTRACT_CREATOR,
         });
 
-        await token.transferFrom(
-          CONTRACT_CREATOR,
-          RECEIVER,
-          new BN(TEN_TOKEN),
-          {
-            from: OTHERS[0],
-          }
-        );
+        await token.transferFrom(CONTRACT_CREATOR, RECEIVER, TEN_TOKEN, {
+          from: OTHERS[0],
+        });
         expect(await token.balanceOf(CONTRACT_CREATOR)).to.be.bignumber.equal(
           toWei("990")
         );
         expect(await token.balanceOf(RECEIVER)).to.be.bignumber.equal(
-          TEN_TOKEN
+          TEN_TOKEN.toString()
         );
       });
     });
 
     describe("events during execution of approve/transferFrom", () => {
       it("emits a approval event", async () => {
-        const txReceipt = await token.approve(OTHERS[0], new BN(TEN_TOKEN), {
+        const txReceipt = await token.approve(OTHERS[0], TEN_TOKEN, {
           from: CONTRACT_CREATOR,
         });
 
         await expectEvent(txReceipt, "Approval", {
           owner: CONTRACT_CREATOR,
           spender: OTHERS[0],
-          value: new BN(TEN_TOKEN),
+          value: TEN_TOKEN,
         });
       });
     });
@@ -156,7 +150,7 @@ contract("NToken", async (accounts) => {
       // ZeroAddress()
       it("reverts if approval target is zero address", async () => {
         await expectRevert.unspecified(
-          token.approve(ZERO_ADDRESS, new BN(TEN_TOKEN), {
+          token.approve(ZERO_ADDRESS, TEN_TOKEN, {
             from: CONTRACT_CREATOR,
           })
         );
@@ -164,7 +158,7 @@ contract("NToken", async (accounts) => {
 
       // InsufficientAllowance()
       it("reverts if transfer amount > allowance", async () => {
-        await token.approve(OTHERS[0], new BN(TEN_TOKEN), {
+        await token.approve(OTHERS[0], TEN_TOKEN, {
           from: CONTRACT_CREATOR,
         });
 

@@ -185,26 +185,6 @@ contract("Treasury", async (accounts) => {
           mockVoting.callSend(RECIPIENT, TEN_ETHER, TEST_REFERENCE)
         );
       });
-
-      // TODO:: find how to make the transaction fail
-      // TransactionFailed
-      // it("reverts if msg.sender is not voting contract", async () => {
-      //   await expectRevert.unspecified();
-      // });
-
-      // InvalidInformationLength
-      it("reverts if msg.sender is not voting contract", async () => {
-        await expectRevert.unspecified(
-          treasury.send(
-            RECIPIENT,
-            ONE_ETHER,
-            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-            {
-              from: SENDER,
-            }
-          )
-        );
-      });
     });
   });
 });
