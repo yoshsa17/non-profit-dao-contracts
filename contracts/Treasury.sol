@@ -24,7 +24,7 @@ contract Treasury {
     // TODO:: add uint256 proposalId,
     event EtherSent(
         uint256 transactionId,
-        address tareget,
+        address target,
         uint256 amount,
         string information
     );
@@ -92,7 +92,7 @@ contract Treasury {
         address target,
         uint256 amount,
         string memory information
-    ) public returns (bool) {
+    ) external returns (bool) {
         if (msg.sender != governanceContract) revert OnlyGovernance();
         if (amount > address(this).balance)
             revert InsufficientBalance(address(this).balance, amount);
@@ -100,11 +100,11 @@ contract Treasury {
         (bool sent, ) = payable(target).call{value: amount}("");
         if (!sent) revert TransactionFailed();
 
-        _recordTransaction(address(0), msg.sender, false, amount, information);
+        _recordTransaction(address(0), target, false, amount, information);
         emit EtherSent(
             _transactionCount,
             // proposalId,
-            msg.sender,
+            target,
             amount,
             information
         );
