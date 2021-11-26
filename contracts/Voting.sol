@@ -4,15 +4,13 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/utils/Address.sol";
 
 contract Voting {
-    // 3days 19938 blocks  60*60*24*3/13(assuming 13s block time)
-    uint256 private _votingPeriod = 19938;
-    uint256 private _proposalThreshold = 50;
-    // 1day 6646 block (60*60*24/13)
-    uint256 private _votingDelay = 0;
-    // 2days 13292 block = 60*60*24*2/13
-    uint256 private _proposalTimeLock = 0;
-    uint256 private _proposalCount;
+    // 138 blocks 30 min (assuming 13 sec blocktime)
+    uint256 private _votingPeriod = 138;
+    uint256 private _votingDelay = 138;
+    uint256 private _proposalTimeLock = 138;
     uint256 private _proposalMaxOperations = 5;
+    uint256 private _proposalThreshold = 50;
+    uint256 private _proposalCount;
 
     function votingPeriod() external view returns (uint256) {
         return _votingPeriod;
@@ -30,14 +28,18 @@ contract Voting {
         return _proposalTimeLock;
     }
 
+    function proposalMaxOperations() external view returns (uint256) {
+        return _proposalMaxOperations;
+    }
+
     function proposalCount() external view returns (uint256) {
         return _proposalCount;
     }
 
-    NReputaion private _nReputaion;
+    IReputation private _nReputation;
     address public _contractCreator;
 
-    mapping(uint256 => Proposal) private _proposals;
+    mapping(uint256 => Proposal) public _proposals;
 
     struct Proposal {
         address proposer;
@@ -92,7 +94,8 @@ contract Voting {
         address voter,
         uint256 proposalId,
         uint8 voteType,
-        uint256 amt
+        uint256 amt,
+        string reason
     );
     event ProposalCanceled(uint256 proposalId);
     event ProposalExecuted(uint256 proposalId);
@@ -120,7 +123,7 @@ contract Voting {
         bytes[] memory calldatas,
         string memory description
     ) external returns (bool) {
-        uint256 proposerReputation = _nReputaion.reputationOf(msg.sender);
+        uint256 proposerReputation = _nReputation.reputationOf(msg.sender);
 
         if (proposerReputation < _proposalThreshold) {
             revert ReputationBelowThreshold();
@@ -166,30 +169,26 @@ contract Voting {
         external
         view
         returns (
-            uint256 id,
             address proposer,
+            string memory description,
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory calldatas,
             uint256 startBlock,
             uint256 endBlock,
-            uint256 executeBlock,
-            uint256 forVotes,
-            uint256 againstVotes,
-            uint256 abstainVotes,
-            bool canceled,
-            bool executed
+            uint256 executeBlock
         )
     {
         Proposal storage proposal = _proposals[proposalId];
 
-        id = proposalId;
         proposer = proposal.proposer;
+        description = proposal.description;
+        targets = proposal.targets;
+        values = proposal.values;
+        calldatas = proposal.calldatas;
         startBlock = proposal.startBlock;
         endBlock = proposal.endBlock;
         executeBlock = proposal.executeBlock;
-        forVotes = proposal.forVotes;
-        againstVotes = proposal.againstVotes;
-        abstainVotes = proposal.abstainVotes;
-        canceled = proposal.canceled;
-        executed = proposal.executed;
     }
 
     /**
@@ -209,7 +208,7 @@ contract Voting {
             return ProposalStatus.Executed;
         } else if (proposal.canceled) {
             return ProposalStatus.Canceled;
-        } else if (block.number <= proposal.startBlock) {
+        } else if (block.number < proposal.startBlock) {
             return ProposalStatus.Pending;
         } else if (block.number <= proposal.startBlock + _votingPeriod) {
             return ProposalStatus.Active;
@@ -223,11 +222,12 @@ contract Voting {
     /**
      * @notice  cast vote to a proposal.
      */
-    function castVote(uint256 proposalId, uint8 support)
-        external
-        returns (bool)
-    {
-        uint256 weight = _nReputaion.reputationOf(msg.sender);
+    function castVote(
+        uint256 proposalId,
+        uint8 support,
+        string memory reason
+    ) external returns (bool) {
+        uint256 weight = _nReputation.reputationOf(msg.sender);
         if (weight == 0) revert OnlyMember();
 
         Proposal storage proposal = _proposals[proposalId];
@@ -236,10 +236,6 @@ contract Voting {
 
         Receipt storage receipt = proposal.receipts[msg.sender];
         if (receipt.hasVoted) revert InvalidDoubleVoting(proposalId);
-
-        receipt.hasVoted = true;
-        receipt.support = support;
-        receipt.votes = weight;
 
         if (support == uint8(VoteType.Against)) {
             proposal.againstVotes += weight;
@@ -251,7 +247,11 @@ contract Voting {
             revert InvalidVoteType();
         }
 
-        emit VoteCast(msg.sender, proposalId, support, weight);
+        receipt.hasVoted = true;
+        receipt.support = support;
+        receipt.votes = weight;
+
+        emit VoteCast(msg.sender, proposalId, support, weight, reason);
         return true;
     }
 
@@ -260,7 +260,7 @@ contract Voting {
 
         if (this.getStatus(proposalId) != ProposalStatus.Succeeded)
             revert NotSucceededProposal();
-        if (proposal.executeBlock < block.number)
+        if (proposal.executeBlock > block.number)
             revert InvalidBlockNumber(proposal.executeBlock, block.number);
 
         _proposals[proposalId].executed = true;
@@ -312,14 +312,14 @@ contract Voting {
         return _proposals[proposalId].receipts[voter];
     }
 
-    function init(address reputaion) external {
+    function init(address reputation) external {
         if (msg.sender != _contractCreator || msg.sender == address(0))
             revert("This function was already called");
-        _nReputaion = NReputaion(reputaion);
+        _nReputation = IReputation(reputation);
         _contractCreator = address(0);
     }
 }
 
-interface NReputaion {
+interface IReputation {
     function reputationOf(address account) external view returns (uint256);
 }
