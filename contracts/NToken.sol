@@ -17,6 +17,7 @@ contract NToken is IERC20 {
     error InsufficientBalance(uint256 available, uint256 requested);
     error InsufficientAllowance(uint256 available, uint256 requested);
     error ZeroAddress();
+    error ZeroAmount();
 
     constructor() {
         _balances[msg.sender] = _totalSupply;
@@ -99,6 +100,7 @@ contract NToken is IERC20 {
         uint256 amt
     ) internal {
         if (src == address(0) || dst == address(0)) revert ZeroAddress();
+        if (amt == 0) revert ZeroAmount();
 
         uint256 srcBalance = _balances[src];
         if (srcBalance < amt) revert InsufficientBalance(srcBalance, amt);
