@@ -2,44 +2,44 @@
 pragma solidity ^0.8.7;
 
 contract Reputation {
-    // State
-    uint8 private _reputationValue = 100;
+    uint128 private _reputationValue = 100;
     uint8 private _maxEvaluation = 3;
-    uint8 private _maxEvaluatiors = 10;
-    // 100days 664615 blocks  60*60*24*5/13
-    uint96 private _maxReputationValidPeriod = 664615;
-    // 5days 33230 blocks  60*60*24*5/13(assuming 13s block time)
-    uint256 private _evaluationPeriod = 33230;
+    uint8 private _maxEvaluators = 5;
+    uint96 private _maxReputationValidPeriod = 100 days;
+    // 138 blocks 30 min (assuming 13 sec blocktime)
+    uint256 private _evaluationPeriod = 138;
     address private _governance;
+
+    mapping(address => bool) private _slashedAddresses;
 
     struct ReputationDetail {
         address evaluator;
-        uint256 expirationBlock;
+        uint256 expirationTime;
     }
-
     mapping(address => ReputationDetail[]) private _reputations;
-    mapping(address => bool) private _slashedAddresses;
 
-    address[] private _evaluators;
-    uint256 private _evaluationStartBlock;
-    uint256 private _evaluationEndBlock;
-
-    enum Evaluation {
-        Active,
-        InActive
+    struct EvaluationRound {
+        uint256 startBlock;
+        uint256 endBlock;
+        address[] evaluators;
+        mapping(address => bool) canEvaluate;
     }
+    mapping(uint256 => EvaluationRound) private _evaluationRounds;
+    uint256 evaluationRoundCount;
 
     // TODO:: refactor
     string[] _emptyStrArray;
 
     // Event
     event ReputationMinted(
+        uint256 roundId,
         address from,
         address to,
-        uint256 validByBlock,
+        uint256 expirationTime,
         string reasons
     );
-    event EveluationStarted(
+    event EvaluationStarted(
+        uint256 roundId,
         address[] evaluators,
         uint256 startBlock,
         uint256 endBlock
@@ -47,60 +47,86 @@ contract Reputation {
 
     // Error
     error OnlyGovernance();
-    error OnlyEveluator();
+    error OnlyEvaluator();
     error OverlappingEvaluationPeriod();
     error InvalidEvaluatorsNumber();
     error InvalidEvaluation();
     error InvalidArrayLength();
-    error InvalidAddress(address required);
+    error InvalidAddress();
     error OnlyEvaluationPeriod();
+    error InvalidRoundId();
 
     constructor(address[] memory _initialMembers, address governance) {
         _governance = governance;
-        // TODO:: refactor
+        // TODO:: remove for-loop
         for (uint256 i; i < _initialMembers.length; i++) {
             _emptyStrArray.push("");
         }
-        _mint(address(0), _initialMembers, _emptyStrArray);
+        _mint(0, address(0), _initialMembers, _emptyStrArray);
+    }
+
+    function getGovernanceAddress() external view returns (address) {
+        return _governance;
+    }
+
+    function isSlashed(address account) external view returns (bool) {
+        return _slashedAddresses[account];
+    }
+
+    function getEvaluationRound(uint256 id)
+        external
+        view
+        returns (
+            uint256 startBlock,
+            uint256 endBlock,
+            address[] memory evaluators
+        )
+    {
+        EvaluationRound storage e = _evaluationRounds[id];
+        startBlock = e.startBlock;
+        endBlock = e.endBlock;
+        evaluators = e.evaluators;
     }
 
     function reputationOf(address account) external view returns (uint256) {
-        ReputationDetail[] memory rawReputations = _reputations[account];
+        if (_slashedAddresses[account]) return 0;
+
+        ReputationDetail[] memory reputationArray = _reputations[account];
         uint256 totalReputation;
 
-        for (uint256 i; i < rawReputations.length; i++) {
-            uint256 expirationBlock = rawReputations[i].expirationBlock;
-            uint256 remainingBlocks;
+        // TODO:: remove for-loop
+        for (uint256 i; i < reputationArray.length; i++) {
+            uint256 expirationTime = reputationArray[i].expirationTime;
+            uint256 currentTime = (block.timestamp / 1 days) * 1 days;
+            if (expirationTime < currentTime) continue;
 
-            if (expirationBlock < block.number) continue;
+            uint256 remainingTime;
             unchecked {
-                remainingBlocks = expirationBlock - block.number;
+                remainingTime = expirationTime - currentTime;
             }
 
-            uint256 percentage = (remainingBlocks * 100) /
-                _maxReputationValidPeriod;
-            uint256 realReputation = _reputationValue / (100 / percentage);
-            totalReputation += realReputation;
+            uint256 basis = (remainingTime * 10000) / _maxReputationValidPeriod;
+            uint256 remainingReputation = (_reputationValue * basis) / 10000;
+            totalReputation += remainingReputation;
         }
         return totalReputation;
     }
 
-    function evaluate(address[] calldata contributors, string[] memory reasons)
-        external
-        returns (bool)
-    {
-        if (_evaluationEndBlock < block.number) revert OnlyEvaluationPeriod();
-        bool flag;
-        for (uint256 i; i < _evaluators.length; i++) {
-            if (msg.sender == _evaluators[i]) {
-                flag = true;
-                break;
-            }
-        }
-        if (!flag) revert OnlyEveluator();
+    function evaluate(
+        uint256 roundId,
+        address[] calldata contributors,
+        string[] calldata reasons
+    ) external returns (bool) {
+        EvaluationRound storage e = _evaluationRounds[roundId];
+        if (e.startBlock == 0) revert InvalidRoundId();
+        if (e.endBlock < block.number) revert OnlyEvaluationPeriod();
+        if (!e.canEvaluate[msg.sender]) revert OnlyEvaluator();
         if (contributors.length > _maxEvaluation) revert InvalidEvaluation();
+        if (contributors.length != reasons.length) revert InvalidArrayLength();
 
-        _mint(msg.sender, contributors, reasons);
+        e.canEvaluate[msg.sender] = false;
+
+        _mint(roundId, msg.sender, contributors, reasons);
         return true;
     }
 
@@ -115,43 +141,53 @@ contract Reputation {
         returns (bool)
     {
         if (msg.sender != _governance) revert OnlyGovernance();
-        if (block.number < _evaluationEndBlock)
-            revert OverlappingEvaluationPeriod();
-        if (_maxEvaluatiors < evaluators.length)
+        if (_maxEvaluators < evaluators.length)
             revert InvalidEvaluatorsNumber();
 
-        _evaluators = evaluators;
-        _evaluationStartBlock = block.number;
-        _evaluationEndBlock = block.number + _evaluationPeriod;
+        uint256 startBlock = block.number;
+        uint256 endBlock = block.number + _evaluationPeriod;
 
-        emit EveluationStarted(
+        evaluationRoundCount++;
+        EvaluationRound storage e = _evaluationRounds[evaluationRoundCount];
+        e.startBlock = startBlock;
+        e.endBlock = endBlock;
+        e.evaluators = evaluators;
+        for (uint8 i; i < evaluators.length; i++) {
+            e.canEvaluate[evaluators[i]] = true;
+        }
+
+        emit EvaluationStarted(
+            evaluationRoundCount,
             evaluators,
-            _evaluationStartBlock,
-            _evaluationEndBlock
+            startBlock,
+            endBlock
         );
         return true;
     }
 
     function _mint(
+        uint256 roundId,
         address src,
         address[] memory dst,
         string[] memory reasons
     ) internal {
-        if (dst.length != reasons.length) revert InvalidArrayLength();
-        ReputationDetail memory newReputation = ReputationDetail({
-            evaluator: src,
-            expirationBlock: block.number + _maxReputationValidPeriod
-        });
+        // mintedTime is rounded down to whole days
+        uint256 mintedTime = (block.timestamp / 1 days) * 1 days;
+        uint256 expirationTime = mintedTime + _maxReputationValidPeriod;
+        ReputationDetail memory newReputation = ReputationDetail(
+            src,
+            expirationTime
+        );
 
-        for (uint8 i = 0; i < dst.length; i++) {
-            if (address(0) == dst[i]) revert InvalidAddress(dst[i]);
-
+        for (uint8 i; i < dst.length; i++) {
+            if (src == dst[i]) revert InvalidAddress();
             _reputations[dst[i]].push(newReputation);
 
             emit ReputationMinted(
+                roundId,
                 src,
                 dst[i],
-                block.number + _maxReputationValidPeriod,
+                expirationTime,
                 reasons[i]
             );
         }
