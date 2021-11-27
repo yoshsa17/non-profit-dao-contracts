@@ -4,7 +4,6 @@ pragma solidity ^0.8.7;
 // import { IERC20 } from "./interfaces/IERC20.sol";
 
 contract Treasury {
-    // State
     uint8 private constant MAX_TX_INFO_LENGTH = 20;
 
     struct Transaction {
@@ -86,7 +85,6 @@ contract Treasury {
         return true;
     }
 
-    // send only ether
     function send(
         // uint256 proposalId,
         address target,

@@ -94,7 +94,6 @@ contract Reputation {
         ReputationDetail[] memory reputationArray = _reputations[account];
         uint256 totalReputation;
 
-        // TODO:: remove for-loop
         for (uint256 i; i < reputationArray.length; i++) {
             uint256 expirationTime = reputationArray[i].expirationTime;
             uint256 currentTime = (block.timestamp / 1 days) * 1 days;
