@@ -9,7 +9,7 @@
   "scripts": {
     "test": "truffle test",
     "migrate": "truffle migrate --reset",
-    "bc": "ganache-cli -h 127.0.0.1 -m 'myCustomSeed'"
+    "bc": "ganache-cli -m 'myCustomSeed' -i 5777"
   },
   "author": "Yoshiro Saito",
   "license": "ISC",
@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.3.3",
+    "@truffle/hdwallet-provider": "^1.7.0",
     "ganache": "^7.0.0-alpha.2"
-  }
+  },
+  "_id": "non-profit-dao-contract@1.0.0"
 }
