@@ -87,7 +87,7 @@ contract("NToken", async (accounts) => {
       // ZeroAmount
       it("reverts if the amount is zero", async () => {
         await expectRevert.unspecified(
-          token.transfer(RECEIVER, ONE_TOKEN, {
+          token.transfer(RECEIVER, new BN("0"), {
             from: CONTRACT_CREATOR,
           })
         );
