@@ -36,7 +36,7 @@ contract Reputation {
         address from,
         address to,
         uint256 expirationTime,
-        string reasons
+        string reason
     );
     event EvaluationStarted(
         uint256 roundId,
