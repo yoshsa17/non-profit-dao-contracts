@@ -2,7 +2,7 @@
 pragma solidity ^0.8.7;
 
 contract Reputation {
-    uint128 private _reputationValue = 100;
+    uint128 private _initialReputationValue = 100;
     uint8 private _maxEvaluation = 3;
     uint8 private _maxEvaluators = 5;
     uint96 private _maxReputationValidPeriod = 100 days;
@@ -105,7 +105,8 @@ contract Reputation {
             }
 
             uint256 basis = (remainingTime * 10000) / _maxReputationValidPeriod;
-            uint256 remainingReputation = (_reputationValue * basis) / 10000;
+            uint256 remainingReputation = (_initialReputationValue * basis) /
+                10000;
             totalReputation += remainingReputation;
         }
         return totalReputation;
