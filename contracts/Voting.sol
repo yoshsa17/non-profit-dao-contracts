@@ -94,7 +94,7 @@ contract Voting {
         address voter,
         uint256 proposalId,
         uint8 voteType,
-        uint256 amt,
+        uint256 weight,
         string reason
     );
     event ProposalCanceled(uint256 proposalId);
@@ -286,9 +286,7 @@ contract Voting {
 
         if (msg.sender != proposal.proposer) revert OnlyProposer();
         ProposalStatus status = this.getStatus(proposalId);
-        if (
-            status != ProposalStatus.Active && status != ProposalStatus.Pending
-        ) {
+        if (status != ProposalStatus.Pending) {
             revert NotActiveProposal(status);
         }
 
